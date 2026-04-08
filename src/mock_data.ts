@@ -12,6 +12,7 @@ export interface Listing {
   description: string; // 描述
   seller: string;      // 卖家名称
   url: string;         // 商品链接
+  publishTime?: number; // 发布时间戳（ms），API 未返回时为 undefined
 }
 
 /**

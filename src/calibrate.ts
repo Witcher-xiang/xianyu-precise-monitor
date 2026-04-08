@@ -101,7 +101,7 @@ export async function runCalibrate(): Promise<void> {
   // 4. User corrections
   const rl = createRL();
   console.log(
-    '\n有判断错误的吗？输入序号修正（如 "1 错" 或 "4 对"），输入 done 结束:'
+    '\n有判断错误的吗？输入序号和原因（如 "1 这个是拼装件不是成品"），输入 done 结束:'
   );
 
   const corrections: Correction[] = [];
@@ -111,9 +111,9 @@ export async function runCalibrate(): Promise<void> {
     const input = await ask(rl, "> ");
     if (input.toLowerCase() === "done" || input === "") break;
 
-    const match = input.match(/^(\d+)\s*(错|对)$/);
+    const match = input.match(/^(\d+)\s+(.+)$/);
     if (!match) {
-      console.log('  格式：序号 + 错/对，如 "1 错" 或 "3 对"');
+      console.log('  格式：序号 + 原因，如 "1 这个是拼装件不是成品" 或 "3 这个应该命中，品牌和比例都对"');
       continue;
     }
 
@@ -124,22 +124,19 @@ export async function runCalibrate(): Promise<void> {
     }
 
     const r = results[idx];
-    const isWrong = match[2] === "错";
-    if (isWrong) {
-      corrections.push({
-        title: r.listing.title,
-        price: r.listing.price,
-        currentResult: r.matched,
-        expected: !r.matched,
-        reason: r.reason,
-      });
-      correctedIndices.add(idx);
-      console.log(
-        `  已记录: "${r.listing.title.slice(0, 30)}..." ${r.matched ? "命中→跳过" : "跳过→命中"}`
-      );
-    } else {
-      console.log(`  已确认: "${r.listing.title.slice(0, 30)}..." 判断正确`);
-    }
+    const userFeedback = match[2];
+    corrections.push({
+      title: r.listing.title,
+      price: r.listing.price,
+      currentResult: r.matched,
+      expected: !r.matched,
+      reason: r.reason,
+      userFeedback,
+    });
+    correctedIndices.add(idx);
+    console.log(
+      `  已记录: "${r.listing.title.slice(0, 30)}..." ${r.matched ? "命中→跳过" : "跳过→命中"} | 原因: ${userFeedback}`
+    );
   }
 
   // 5. Save corrected items as test cases

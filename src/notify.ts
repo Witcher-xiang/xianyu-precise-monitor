@@ -22,6 +22,10 @@ async function sendFeishu(listing: Listing, reason: string): Promise<void> {
     return;
   }
 
+  const pubTime = listing.publishTime
+    ? new Date(listing.publishTime).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "未知";
+
   const card = {
     header: {
       title: { tag: "plain_text" as const, content: "商品上新提醒" },
@@ -36,6 +40,7 @@ async function sendFeishu(listing: Listing, reason: string): Promise<void> {
             `**${listing.title}**`,
             `价格：¥${listing.price}`,
             `卖家：${listing.seller}`,
+            `上新时间：${pubTime}`,
             `${listing.description.slice(0, 100)}`,
             `命中理由：${reason}`,
           ].join("\n"),
@@ -75,12 +80,17 @@ async function sendTelegram(listing: Listing, reason: string): Promise<void> {
     return;
   }
 
+  const pubTime = listing.publishTime
+    ? new Date(listing.publishTime).toLocaleString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })
+    : "未知";
+
   const text = [
     `*商品上新提醒*`,
     ``,
     `*${listing.title}*`,
     `价格：¥${listing.price}`,
     `卖家：${listing.seller}`,
+    `上新时间：${pubTime}`,
     `${listing.description.slice(0, 100)}`,
     `命中理由：${reason}`,
     ``,

@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
 import { join } from "path";
 import "dotenv/config";
 
-import { fetchMockListings, type Listing } from "./mock_data.js";
+import { fetchMockListings } from "./mock_data.js";
 import { fetchListings as fetchRealListings, closeBrowser } from "./fetcher.js";
 import { loadRules, buildFilterPrompt, applyHardFilters } from "./rules.js";
 import { filterListing, MODEL } from "./filter.js";
@@ -13,26 +13,50 @@ const USE_REAL_DATA = true;
 const CHECK_INTERVAL = parseInt(process.env.CHECK_INTERVAL || "300000");
 const CACHE_DIR = join(process.cwd(), ".cache");
 const SEEN_FILE = join(CACHE_DIR, "seen_items.json");
+const SEEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;   // seen 记录 7 天过期
+const FRESHNESS_MS = 24 * 60 * 60 * 1000;           // 只通知 24 小时内发布的商品
 
-function loadSeenIds(): Set<string> {
+/** seen_items.json 格式: { "id": timestamp, ... } */
+function loadSeenIds(): Map<string, number> {
   try {
     if (existsSync(SEEN_FILE)) {
-      const data = JSON.parse(readFileSync(SEEN_FILE, "utf-8"));
-      return new Set(data);
+      const raw = JSON.parse(readFileSync(SEEN_FILE, "utf-8"));
+
+      // 兼容旧格式（纯数组 → 转为 Map，时间设为 now）
+      if (Array.isArray(raw)) {
+        const now = Date.now();
+        return new Map(raw.map((id: string) => [id, now]));
+      }
+
+      // 新格式：对象 { id: timestamp }，加载时清理过期条目
+      const now = Date.now();
+      const map = new Map<string, number>();
+      for (const [id, ts] of Object.entries(raw)) {
+        if (now - (ts as number) < SEEN_EXPIRY_MS) {
+          map.set(id, ts as number);
+        }
+      }
+      return map;
     }
   } catch {}
-  return new Set();
+  return new Map();
 }
 
-function saveSeenIds(ids: Set<string>): void {
+function saveSeenIds(ids: Map<string, number>): void {
   mkdirSync(CACHE_DIR, { recursive: true });
-  writeFileSync(SEEN_FILE, JSON.stringify([...ids], null, 2));
+  const obj: Record<string, number> = {};
+  for (const [id, ts] of ids) {
+    obj[id] = ts;
+  }
+  writeFileSync(SEEN_FILE, JSON.stringify(obj, null, 2));
 }
 
 async function checkOnce(): Promise<void> {
   const timestamp = new Date().toLocaleString("zh-CN");
   const config = loadRules();
   const systemPrompt = buildFilterPrompt(config);
+  const now = Date.now();
+  const isFirstRun = !existsSync(SEEN_FILE);
 
   console.log(`\n[${timestamp}] 开始检查...`);
 
@@ -42,6 +66,18 @@ async function checkOnce(): Promise<void> {
   console.log(`  获取到 ${listings.length} 条商品`);
 
   const seenIds = loadSeenIds();
+
+  // 首次运行：静默建基线，不发通知
+  if (isFirstRun) {
+    console.log("  首次运行，建立基线（不发送通知）...");
+    for (const listing of listings) {
+      seenIds.set(listing.id, now);
+    }
+    saveSeenIds(seenIds);
+    console.log(`  已记录 ${listings.length} 条商品作为基线`);
+    return;
+  }
+
   const newListings = listings.filter((item) => !seenIds.has(item.id));
   console.log(`  其中 ${newListings.length} 条是新的`);
 
@@ -52,11 +88,25 @@ async function checkOnce(): Promise<void> {
 
   let matchCount = 0;
   for (const listing of newListings) {
+    // 无发布时间 → 跳过
+    if (!listing.publishTime) {
+      console.log(`  ⏭️ 无发布时间，跳过: ${listing.title.slice(0, 30)}...`);
+      seenIds.set(listing.id, now);
+      continue;
+    }
+
+    // 超过 24 小时 → 跳过
+    if (now - listing.publishTime > FRESHNESS_MS) {
+      console.log(`  ⏭️ 非近期上新: ${listing.title.slice(0, 30)}...`);
+      seenIds.set(listing.id, now);
+      continue;
+    }
+
     // Hard filters first (price, region)
     const hardResult = applyHardFilters(listing, config.filters);
     if (!hardResult.pass) {
       console.log(`  ⏭️ 硬过滤跳过: ${listing.title.slice(0, 30)}... → ${hardResult.reason}`);
-      seenIds.add(listing.id);
+      seenIds.set(listing.id, now);
       continue;
     }
 
@@ -67,7 +117,7 @@ async function checkOnce(): Promise<void> {
       await notify(listing, result.reason);
     }
 
-    seenIds.add(listing.id);
+    seenIds.set(listing.id, now);
   }
 
   saveSeenIds(seenIds);

@@ -70,6 +70,7 @@ export interface Correction {
   currentResult: boolean;
   expected: boolean;
   reason: string;
+  userFeedback: string; // 用户解释为什么判断错误
 }
 
 export async function optimizeRules(
@@ -86,7 +87,7 @@ ${currentRules.map((r, i) => `${i + 1}. ${r}`).join("\n")}
 ${corrections
   .map(
     (c) =>
-      `商品: ${c.title} ¥${c.price} | 当前判断: ${c.currentResult ? "命中" : "跳过"} | 正确应该: ${c.expected ? "命中" : "跳过"} | 原因: ${c.reason}`
+      `商品: ${c.title} ¥${c.price} | 当前判断: ${c.currentResult ? "命中" : "跳过"} | 正确应该: ${c.expected ? "命中" : "跳过"} | 原因: ${c.reason} | 用户反馈: ${c.userFeedback}`
   )
   .join("\n")}
 
