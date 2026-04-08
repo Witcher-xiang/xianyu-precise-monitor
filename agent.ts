@@ -15,22 +15,22 @@ const command = process.argv[2];
 
 switch (command) {
   case "setup": {
-    const { runSetup } = await import("./setup.js");
+    const { runSetup } = await import("./src/setup.js");
     await runSetup();
     break;
   }
   case "calibrate": {
-    const { runCalibrate } = await import("./calibrate.js");
+    const { runCalibrate } = await import("./src/calibrate.js");
     await runCalibrate();
     break;
   }
   case "test": {
-    const { runTest } = await import("./test.js");
+    const { runTest } = await import("./src/test.js");
     await runTest();
     break;
   }
   default: {
-    const { runMonitor } = await import("./monitor.js");
+    const { runMonitor } = await import("./src/monitor.js");
     await runMonitor();
     break;
   }
