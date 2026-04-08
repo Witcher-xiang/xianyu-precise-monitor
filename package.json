@@ -1,8 +1,8 @@
 {
-  "name": "xianyu-monitor",
+  "name": "xianyu-precise-monitor",
   "version": "1.0.0",
   "type": "module",
-  "description": "闲鱼指尖模室 1/72 坦克模型上新监控 Agent",
+  "description": "闲鱼精准商品监控 Agent — 可配置规则 + LLM 智能筛选",
   "scripts": {
     "start": "tsx agent.ts",
     "dev": "tsx watch agent.ts"
