@@ -1,0 +1,23 @@
+{
+  "name": "xianyu-monitor",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "闲鱼指尖模室 1/72 坦克模型上新监控 Agent",
+  "scripts": {
+    "start": "tsx agent.ts",
+    "dev": "tsx watch agent.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@larksuiteoapi/node-sdk": "latest",
+    "dotenv": "^16.4.7",
+    "puppeteer": "^24.40.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
